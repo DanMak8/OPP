@@ -1,0 +1,101 @@
+#include <iostream>
+#include <Windows.h>
+#include <thread>
+
+const size_t ROWS = 10;
+const size_t COLS = 10;
+const size_t NTHREADS = 4;
+
+bool startsWithEvenDigit(int num) {
+    if (num == 0) return false;
+    if (num < 0) num = -num;
+    while (num >= 10) {
+        num /= 10;
+    }
+    return (num % 2 == 0);
+}
+
+void findMin(int** matrix, size_t startRow, size_t endRow, int& result)
+{
+    result = INT_MAX;
+    for (size_t i{ startRow }; i < endRow; ++i) {
+        for (size_t j{}; j < COLS; ++j) {
+            if (startsWithEvenDigit(matrix[i][j])) {
+                if (matrix[i][j] < result) {
+                    result = matrix[i][j];
+                }
+            }
+        }
+    }
+    std::cout << std::this_thread::get_id() << ' ' << result << '\n';
+}
+
+int findMinParallel(int** matrix)
+{
+    std::thread thr[NTHREADS - 1]{};
+    int min_thread[NTHREADS - 1]{};
+    size_t chunk{ ROWS / NTHREADS };
+
+    for (size_t i{}; i < NTHREADS - 1; ++i) {
+        thr[i] = std::thread(findMin, matrix, chunk * i, chunk * (i + 1), std::ref(min_thread[i]));
+    }
+
+    int global_min{};
+    findMin(matrix, chunk * (NTHREADS - 1), ROWS, global_min);
+
+    for (size_t i{}; i < NTHREADS - 1; ++i) {
+        thr[i].join();
+        if (min_thread[i] < global_min) {
+            global_min = min_thread[i];
+        }
+    }
+
+    return global_min;
+}
+
+void initMatrix(int** matrix)
+{
+    for (size_t i{}; i < ROWS; ++i) {
+        for (size_t j{}; j < COLS; ++j) {
+            matrix[i][j] = rand() % 2000 - 1000; // числа от -1000 до 999
+        }
+    }
+}
+
+void printMatrix(int** matrix)
+{
+    for (size_t i{}; i < ROWS; ++i) {
+        for (size_t j{}; j < COLS; ++j) {
+            std::cout << matrix[i][j] << '\t';
+        }
+        std::cout << '\n';
+    }
+}
+
+int main()
+{
+    setlocale(LC_ALL, "RUS");
+    int** matrix = new int* [ROWS];
+    for (size_t i{}; i < ROWS; ++i) {
+        matrix[i] = new int[COLS];
+    }
+
+    srand(GetTickCount());
+    initMatrix(matrix);
+
+    printMatrix(matrix);
+    std::cout << '\n';
+
+    int min_nonparallel{};
+    findMin(matrix, 0, ROWS, min_nonparallel);
+
+    std::cout << "параллельный поиск " << findMinParallel(matrix) << '\n';
+
+    for (size_t i{}; i < ROWS; ++i) {
+        delete[] matrix[i];
+    }
+    delete[] matrix;
+
+    std::cin.get();
+    return 0;
+}
