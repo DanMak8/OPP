@@ -1,0 +1,9 @@
+﻿  laba.cpp
+  laba2.cpp
+  Создание кода...
+laba2.obj : error LNK2005: "int __cdecl findMinParallel(int * *)" (?findMinParallel@@YAHPEAPEAH@Z) уже определен в laba.obj
+laba2.obj : error LNK2005: "void __cdecl initMatrix(int * *)" (?initMatrix@@YAXPEAPEAH@Z) уже определен в laba.obj
+laba2.obj : error LNK2005: "void __cdecl printMatrix(int * *)" (?printMatrix@@YAXPEAPEAH@Z) уже определен в laba.obj
+laba2.obj : error LNK2005: "bool __cdecl startsWithEvenDigit(int)" (?startsWithEvenDigit@@YA_NH@Z) уже определен в laba.obj
+laba2.obj : error LNK2005: main уже определен в laba.obj
+C:\Users\dawea\Documents\OPP1\x64\Debug\OPP1.exe : fatal error LNK1169: обнаружен многократно определенный символ - один или более

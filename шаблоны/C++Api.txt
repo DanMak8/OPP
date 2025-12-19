@@ -1,0 +1,59 @@
+#include <iostream>
+#include <Windows.h>
+#include <thread>
+
+const size_t COUNT = 110;
+const size_t NTHREADS = 4;
+
+void sum(int* arr, size_t left, size_t right, int& result)
+{
+	result = 0;
+	for (size_t i{left}; i < right; ++i)
+		result += arr[i];
+	std::cout << "Id from C++ API: " << std::this_thread::get_id() << ' ' << result << '\n';
+}
+
+int sum_parallel(int* arr)
+{
+	std::thread thr[NTHREADS - 1]{};
+	int sum_thread[NTHREADS - 1]{};
+	size_t chunk{ COUNT / NTHREADS };
+	for (int i{}; i < NTHREADS - 1; ++i)
+	{
+		thr[i] = std::thread(sum, arr, chunk * i, chunk * (i + 1), std::ref(sum_thread[i]));
+
+	}
+	
+	int global_sum{};
+	sum(arr, chunk * (NTHREADS - 1), COUNT, global_sum);
+
+
+	for (int i{}; i < NTHREADS - 1; ++i)
+	{
+		thr[i].join();
+		global_sum += sum_thread[i];
+	}
+
+	return global_sum;
+}
+
+void init_array(int* arr)
+{
+	for (size_t i{}; i < COUNT; ++i)
+		arr[i] = rand() % 100;
+}
+
+int main()
+{
+	int arr[COUNT]{};
+	srand(GetTickCount());
+	init_array(arr);
+
+	int sum_nonparallel{};
+	sum(arr, 0, COUNT, sum_nonparallel);
+	std::cout << "sum nonparallel = " << sum_nonparallel << '\n';
+	std::cout << "sum parallel    = " << sum_parallel(arr) << '\n';
+
+	std::cin.get();
+	return 0;
+}

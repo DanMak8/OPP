@@ -1,0 +1,53 @@
+#include <iostream>
+#include <functional>
+#include <future>
+#include <Windows.h>
+
+const size_t COUNT = 110;
+const size_t NTHREADS = 4;
+
+int sum(int* arr, size_t left, size_t right)
+{
+	int result{};
+	for (size_t i{ left }; i < right; ++i)
+		result += arr[i];
+	return result;
+}
+
+int sum_parallel(int* arr)
+{
+	std::future<int> thr[NTHREADS - 1]{};
+	size_t chunk{ COUNT / NTHREADS };
+	for (size_t i{}; i < NTHREADS - 1; ++i)
+	{
+		thr[i] = std::async(std::launch::async, sum, arr, chunk * i, chunk * (i + 1));
+	};
+
+	int global_sum{ sum(arr, chunk * (NTHREADS - 1), COUNT) };
+
+	for (int i{}; i < NTHREADS - 1; ++i)
+		global_sum += thr[i].get();
+
+	return global_sum;
+}
+
+void init_array(int* arr)
+{
+	for (size_t i{}; i < COUNT; ++i)
+		arr[i] = rand() % 100;
+}
+
+int main()
+{
+	int arr[COUNT]{};
+
+	srand(GetTickCount());
+	init_array(arr);
+
+	int sum_nonparallel{};
+	std::cout << "sum nonparallel = " << sum(arr, 0, COUNT) << '\n';
+	std::cout << "sum parallel = " << sum_parallel(arr) << '\n';
+
+	//std::cin.get();
+	return 0;
+}

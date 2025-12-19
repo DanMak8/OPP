@@ -1,0 +1,86 @@
+#include <iostream>
+#include <Windows.h>
+#include <process.h>
+
+const size_t COUNT = 110;
+const size_t NTHREADS = 4;
+
+struct INFORM
+{
+	int* arr;
+	size_t left, right;
+	int sum{};
+};
+
+int sum_nonparallel(int* arr)
+{
+	int sum{};
+	for (int i{}; i < COUNT; ++i)
+		sum += arr[i];
+	return sum;
+}
+
+unsigned __stdcall sum(void* arg)
+{
+	INFORM* inform = (INFORM*)arg;
+	inform->sum = 0;
+	for (size_t i{ inform->left }; i < inform->right; ++i)
+		inform->sum += inform->arr[i];
+	std::cout << "Id from WinAPI: " << ::GetCurrentThreadId() << ' ' << inform->sum << '\n';
+	if (inform->right != COUNT)
+		_endthreadex(0);
+	return 0;
+}
+
+int sum_parallel(int* arr)
+{
+	HANDLE thr[NTHREADS - 1]{};
+	//unsigned ThreadId[NTHREADS - 1]{};
+	INFORM informs[NTHREADS];
+	size_t chunk{ COUNT / NTHREADS };
+	for (int i{}; i < NTHREADS; ++i)
+	{
+		informs[i].arr = arr;
+		informs[i].left = chunk * i;
+		informs[i].sum = 0;
+		if (i == NTHREADS - 1)
+			informs[i].right = COUNT;
+		else // i < NTHREADS - 1
+		{
+			informs[i].right = chunk * (i + 1);
+			thr[i] = (HANDLE)_beginthreadex(nullptr, 0, &sum, &informs[i], 0, nullptr);
+		}
+	}
+	//sum((void*)&informs[NTHREADS - 1]);
+	sum((void*)(informs + NTHREADS - 1));
+
+	WaitForMultipleObjects(NTHREADS - 1, thr, true, INFINITE);
+
+	int global_sum{};
+	for (int i{}; i < NTHREADS; ++i)
+		global_sum += informs[i].sum;
+
+	for (int i{}; i < NTHREADS - 1; ++i)
+		CloseHandle(thr[i]);
+
+	return global_sum;
+}
+
+void init_array(int* arr)
+{
+	for (size_t i{}; i < COUNT; ++i)
+		arr[i] = rand() % 100;
+}
+
+int main()
+{
+	int arr[COUNT]{};
+	srand(GetTickCount());
+	init_array(arr);
+
+	std::cout << "sum nonparallel = " << sum_nonparallel(arr) << '\n';
+	std::cout << "sum parallel    = " << sum_parallel(arr) << '\n';
+
+	std::cin.get();
+	return 0;
+}
