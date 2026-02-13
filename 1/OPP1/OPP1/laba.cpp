@@ -10,7 +10,9 @@ struct INFORM {
     int** matrix;
     int startRow, endRow;
     int minValue;
+    int threadId;
 };
+
 
 bool startsWithEvenDigit(int num) {
     if (num == 0) return false;
@@ -21,10 +23,13 @@ bool startsWithEvenDigit(int num) {
     return (num % 2 == 0);
 }
 
-// Ôóíêöèÿ ïîòîêà äëÿ ïîèñêà ìèíèìóìà
+
 unsigned __stdcall findMin(void* arg) {
     INFORM* inform = (INFORM*)arg;
     inform->minValue = INT_MAX;
+
+    std::cout << "ÐŸÐ¾Ñ‚Ð¾Ðº " << inform->threadId << " Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚ ÑÑ‚Ñ€Ð¾ÐºÐ¸ Ñ "
+        << inform->startRow << " Ð¿Ð¾ " << inform->endRow - 1 << std::endl;
 
     for (int i = inform->startRow; i < inform->endRow; ++i) {
         for (int j = 0; j < COLS; ++j) {
@@ -36,10 +41,19 @@ unsigned __stdcall findMin(void* arg) {
         }
     }
 
+    std::cout << "ÐŸÐ¾Ñ‚Ð¾Ðº " << inform->threadId << " Ð·Ð°Ð²ÐµÑ€ÑˆÐ¸Ð» Ñ€Ð°Ð±Ð¾Ñ‚Ñƒ, min = ";
+    if (inform->minValue == INT_MAX) {
+        std::cout << "Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ð¾";
+    }
+    else {
+        std::cout << inform->minValue;
+    }
+    std::cout << std::endl;
+
     return 0;
 }
 
-// Ïàðàëëåëüíûé ïîèñê ìèíèìóìà
+
 int findMinParallel(int** matrix) {
     HANDLE thr[NTHREADS - 1];
     INFORM informs[NTHREADS];
@@ -51,6 +65,7 @@ int findMinParallel(int** matrix) {
     for (int i = 0; i < NTHREADS - 1; ++i) {
         informs[i].matrix = matrix;
         informs[i].startRow = currentRow;
+        informs[i].threadId = i + 1;
 
         int rowsForThisThread = rowsPerThread;
         if (i < extraRows) {
@@ -63,11 +78,12 @@ int findMinParallel(int** matrix) {
         thr[i] = (HANDLE)_beginthreadex(NULL, 0, &findMin, &informs[i], 0, NULL);
     }
 
+
     informs[NTHREADS - 1].matrix = matrix;
     informs[NTHREADS - 1].startRow = currentRow;
     informs[NTHREADS - 1].endRow = ROWS;
+    informs[NTHREADS - 1].threadId = 0;
 
-    //ôóíêöèÿ äëÿ îñíîâíîãî ïîòîêà
     findMin(&informs[NTHREADS - 1]);
 
     WaitForMultipleObjects(NTHREADS - 1, thr, TRUE, INFINITE);
@@ -109,25 +125,28 @@ void printMatrix(int** matrix) {
 }
 
 int main() {
+    setlocale(LC_ALL, "RUS");
     int** matrix = new int* [ROWS];
     for (int i = 0; i < ROWS; ++i) {
         matrix[i] = new int[COLS];
     }
 
-    srand(GetTickCount());
     initMatrix(matrix);
 
     printMatrix(matrix);
     std::cout << std::endl;
 
-    // Ïàðàëëåëüíûé ïîèñê ìèíèìóìà
+    std::cout << "ÐÐ°Ñ‡Ð°Ð»Ð¾ Ð¿Ð°Ñ€Ð°Ð»Ð»ÐµÐ»ÑŒÐ½Ð¾Ð³Ð¾ Ð¿Ð¾Ð¸ÑÐºÐ°" << std::endl;
+
     int result = findMinParallel(matrix);
+    std::cout << "ÐšÐ¾Ð½ÐµÑ† Ð¿Ð°Ñ€Ð°Ð»Ð»ÐµÐ»ÑŒÐ½Ð¾Ð³Ð¾ Ð¿Ð¾Ð¸ÑÐºÐ°" << std::endl;
+    std::cout << std::endl;
 
     if (result == INT_MAX) {
-        std::cout << "×èñëà, íà÷èíàþùèåñÿ ñ ÷åòíîé öèôðû íå íàéäåíû" << std::endl;
+        std::cout << "Ð§Ð¸ÑÐ»Ð°, Ð½Ð°Ñ‡Ð¸Ð½Ð°ÑŽÑ‰Ð¸ÐµÑÑ Ñ Ñ‡ÐµÑ‚Ð½Ð¾Ð¹ Ñ†Ð¸Ñ„Ñ€Ñ‹, Ð½Ðµ Ð½Ð°Ð¹Ð´ÐµÐ½Ñ‹" << std::endl;
     }
     else {
-        std::cout << result << std::endl;
+        std::cout << "ÐœÐ¸Ð½Ð¸Ð¼Ð°Ð»ÑŒÐ½Ð¾Ðµ Ñ‡Ð¸ÑÐ»Ð¾, Ð½Ð°Ñ‡Ð¸Ð½Ð°ÑŽÑ‰ÐµÐµÑÑ Ñ Ñ‡ÐµÑ‚Ð½Ð¾Ð¹ Ñ†Ð¸Ñ„Ñ€Ñ‹: " << result << std::endl;
     }
 
     for (int i = 0; i < ROWS; ++i) {
